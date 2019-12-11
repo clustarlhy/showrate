@@ -24,6 +24,9 @@ host_line = {}
 # cnn tf result 
 cnn_dict = {
   'step':'0',
+  'speed_mean':'0',
+  'speed_uncertainty':'0',
+  'speed_jitter':'0',
   'total_loss':'0',
   'top_1_accuracy':'0',
   'top_5_accuracy':'0'
@@ -170,10 +173,13 @@ class CnnHandler(tornado.web.RequestHandler):
         cnn_lock.acquire()
         try:
           cnn_dict['step'] = Cnninfo[0]
-          cnn_dict['total_loss'] = Cnninfo[1]
-          cnn_dict['top_1_accuracy'] = Cnninfo[2]
-          cnn_dict['top_5_accuracy'] = Cnninfo[3]
-        # print(cnn_dict)
+          cnn_dict['speed_mean'] = Cnninfo[1]
+          cnn_dict['speed_uncertainty'] = Cnninfo[2]
+          cnn_dict['speed_jitter'] = Cnninfo[3]
+          cnn_dict['total_loss'] = Cnninfo[4]
+          cnn_dict['top_1_accuracy'] = Cnninfo[5]
+          cnn_dict['top_5_accuracy'] = Cnninfo[6]
+          print(cnn_dict)
         # output = '{}\t\t{}\t\t{}\t\t{}\n'.format(step, total_loss, top_1_accuracy, top_5_accuracy)
         # print(output, end="")
         finally:
@@ -186,7 +192,7 @@ class CnnRequestHandler(websocket.WebSocketHandler):
     def check_origin(self, origin):
         return True
     def open(self):
-       # print("WebSocket opened")
+        print("WebSocket opened")
     
     async def on_message(self,message):
         try:
@@ -196,7 +202,6 @@ class CnnRequestHandler(websocket.WebSocketHandler):
                 dict = cnn_dict
             finally:
                 cnn_lock.release()
-            # print(dict)
             msg = json.dumps(dict)
             await self.write_message(msg)
             await asyncio.sleep(1)
