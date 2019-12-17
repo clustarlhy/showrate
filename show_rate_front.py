@@ -1,3 +1,4 @@
+
 # get rate from all VMs.
 
 import asyncio
@@ -22,6 +23,7 @@ bw_lock = Lock()
 host_line = {}
 
 # cnn tf result 
+cnn_his={}
 cnn_dict = {
   'step':'0',
   'speed_mean':'0',
@@ -167,6 +169,27 @@ class CurBwHandler(websocket.WebSocketHandler):
         except WebSocketClosedError:
             pass
 
+
+
+# class CnnHistory:
+#     def __init__(self):
+#         self.cnn_history = []
+#     def push(self, cnn_data):
+#         if len(self.cnn_history) >= 10:
+#             self.cnn_history.pop(0)
+#         self.cnn_history.append(cnn_data)
+#     def dump(self):
+#         return json.dumps(self.cnn_history)
+
+#     def get_latest(self):
+#         return self.cnn_history[-1]
+    
+#     def latest_bw(self):
+#         if len(self.cnn_history) == 0:
+#             return 0.0
+#         else:
+#             return self.cnn_history[-1]['0.0']
+
 class CnnHandler(tornado.web.RequestHandler):
     def post(self):
         Cnninfo = json.loads(self.request.body.decode('utf-8'))
@@ -179,9 +202,9 @@ class CnnHandler(tornado.web.RequestHandler):
           cnn_dict['total_loss'] = Cnninfo[4]
           cnn_dict['top_1_accuracy'] = Cnninfo[5]
           cnn_dict['top_5_accuracy'] = Cnninfo[6]
-          print(cnn_dict)
-        # output = '{}\t\t{}\t\t{}\t\t{}\n'.format(step, total_loss, top_1_accuracy, top_5_accuracy)
-        # print(output, end="")
+          cnn_his[Cnninfo[7].strip("'")]=cnn_dict
+          print(cnn_his)
+        # print(cnn_dict)
         finally:
           cnn_lock.release()
         self.set_status(200)
@@ -195,16 +218,22 @@ class CnnRequestHandler(websocket.WebSocketHandler):
         print("WebSocket opened")
     
     async def on_message(self,message):
+        vm_list = json.loads(message)['vm']
+        print(cnn_his["172.17.255.211"])
         try:
-            cnn_lock.acquire()
-            try:
-                dict = {}
-                dict = cnn_dict
-            finally:
-                cnn_lock.release()
-            msg = json.dumps(dict)
-            await self.write_message(msg)
-            await asyncio.sleep(1)
+            #while True:
+                cnn_lock.acquire()
+                try:
+                    dict = {}
+                    for vm in vm_list:
+                        print(vm)
+                        dict[vm] = cnn_his.get(vm,' ')
+                finally:
+                    cnn_lock.release()
+                msg = json.dumps(dict)
+                print(msg)
+                await self.write_message(msg)
+                await asyncio.sleep(1)
         except WebSocketClosedError:
             pass
 
